@@ -595,18 +595,23 @@ const app = {
     },
 
     computeAutoDampen(startM, n, measureList) {
-        let remLen = n.length || 1;
+        let remLen = parseFloat(n.length) || 1;
         let cMIdx = measureList.indexOf(startM);
         let cLogTime = this.getLogicalTime(startM, n.time);
+        
+        // Tolerance for slight human clicking imperfections (0.15 beats)
+        const tolerance = 0.15; 
         
         while (remLen > 0.001 && cMIdx !== -1 && cMIdx < measureList.length) {
             const curM = measureList[cMIdx];
             let logAvail = (curM.tsTop || 4) - cLogTime;
             let logConsume = Math.min(remLen, logAvail);
             let endLogTime = cLogTime + logConsume;
-            let reachingNextDownbeat = (Math.abs(remLen - logAvail) < 0.001);
             
-            if (remLen <= logAvail + 0.001) {
+            // Check if note reaches within tolerance of the end of the measure
+            let reachingNextDownbeat = (Math.abs(remLen - logAvail) <= tolerance);
+            
+            if (remLen <= logAvail + tolerance) {
                 let targetMIdx = cMIdx;
                 let targetFrac = 0;
                 
@@ -624,8 +629,10 @@ const app = {
                     if (targetM.notes) {
                         for (let nn of targetM.notes) {
                             if (nn === n) continue; 
-                            if (nn.pitch === n.pitch && nn.half === n.half) {
-                                if (Math.abs(nn.time - targetFrac) < 0.05) return false; 
+                            // Match the exact bell, regardless of which staff half it was mapped on
+                            if (nn.pitch === n.pitch) {
+                                // Added leniency to the visual snap check as well
+                                if (Math.abs(nn.time - targetFrac) <= 0.08) return false; 
                             }
                         }
                     }
